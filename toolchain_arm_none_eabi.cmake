@@ -4,12 +4,12 @@ set(CMAKE_SYSTEM_PROCESSOR  arm)
 
 
 # Define TOOLCHAIN: COMPILER, ASSEMBLER, ACHIVER, LINKER
-find_program(CMAKE_C_COMPILER       NAMES "arm-none-eabi-gcc"        PATHS ${toolchain_path})
-find_program(CMAKE_CXX_COMPILER     NAMES "arm-none-eabi-g++"        PATHS ${toolchain_path})
-find_program(CMAKE_ASM_COMPILER     NAMES "arm-none-eabi-gcc"        PATHS ${toolchain_path})
-find_program(CMAKE_LINKER           NAMES "arm-none-eabi-gcc"        PATHS ${toolchain_path})
-find_program(CMAKE_OBJCOPY          NAMES "arm-none-eabi-objcopy"    PATHS ${toolchain_path})
-find_program(CMAKE_BIN_CONVERTER    NAMES "arm-none-eabi-objcopy"    PATHS ${toolchain_path})
+find_program(CMAKE_C_COMPILER       NAMES "arm-none-eabi-gcc")
+find_program(CMAKE_CXX_COMPILER     NAMES "arm-none-eabi-g++")
+find_program(CMAKE_ASM_COMPILER     NAMES "arm-none-eabi-gcc")
+find_program(CMAKE_LINKER           NAMES "arm-none-eabi-gcc")
+find_program(CMAKE_OBJCOPY          NAMES "arm-none-eabi-objcopy")
+find_program(CMAKE_BIN_CONVERTER    NAMES "arm-none-eabi-objcopy")
 
 
 # Set build rule
