@@ -120,6 +120,8 @@ static void prvSetupHardware( void )
     portDISABLE_INTERRUPTS();
 
     Irq_Setup();
+
+    (void)pfcInitModules(getModuleConfigs());
 }
 
 static void prvVIOMMUFETask( void *pvParameters )
