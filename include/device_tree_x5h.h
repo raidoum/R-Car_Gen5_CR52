@@ -45,7 +45,6 @@ typedef enum {
     MODULE_MAX = 255        ///< Max module ID.
 } e_module_id_t;
 
-#if (BOARD == X5H_IRONHIDE)
 #define MODULE_CONFIGS \
     MODULE_CONFIG(MODULE_SCIF1, 1), \
     MODULE_CONFIG(MODULE_I2C0,  1), \
@@ -59,25 +58,6 @@ typedef enum {
     /* Add module configs here */   \
     /* Sentinel guard: Do not remove */ \
     MODULE_CONFIG(MODULE_INVALID, 0) \
-
-#elif (BOARD == MDP_AIACC_HIL)
-#define MODULE_CONFIGS \
-    MODULE_CONFIG(MODULE_SCIF1, 1), \
-    MODULE_CONFIG(MODULE_I2C0,  1), \
-    MODULE_CONFIG(MODULE_I2C1,  1), \
-    MODULE_CONFIG(MODULE_I2C2,  1), \
-    MODULE_CONFIG(MODULE_I2C3,  1), \
-    /* Add module configs here */   \
-    /* Sentinel guard: Do not remove */ \
-    MODULE_CONFIG(MODULE_INVALID, 0) \
-
-#else // (BOARD == X5H_VDK || BOARD == X5H_RFS2 || BOARD == MDP_AIACC_RFS2)
-#define MODULE_CONFIGS \
-    /* Add module configs here */   \
-    /* Sentinel guard: Do not remove */ \
-    MODULE_CONFIG(MODULE_INVALID, 0) \
-
-#endif
 
 /**
  * @brief Configuration PFC for module HW IP.
