@@ -27,6 +27,12 @@
  *
  */
 
+/**
+ * @brief This sample is for demonstrate linkup, HDMA and PIO of UCIe
+ *        between CR core and CR core of two chiplet. This is for
+ *        UCIe with mode RC.
+ */
+
 /* Scheduler include files. */
 #include "FreeRTOS.h"
 #include "task.h"
@@ -44,6 +50,7 @@
 #include "ucie/r_ucie.h"
 #include "ucie_concept.h"
 #include "rcar_utils.h"
+#include "board.h"
 
 #define main_ucie_TASK_PRIORITY        (tskIDLE_PRIORITY + 1)
 #define UCIE_RC_SIZE (configMINIMAL_STACK_SIZE * 2)
@@ -62,12 +69,24 @@
 
 #define DBSC01_HDMA_PA(n)       (DRAM_DBSC01_ADDR_PA + (n) * DMA_SIZE_PER_CHAN)
 
+#if (BOARD == MDP_AIACC_HIL || BOARD == MDP_AIACC_RFS2)
+#define RCTBUBYPSEN_ADDRESS     0x18B41010  /* Realtime Core TBU bypass enable register address */
+#define MASK 0x00000003
+#else
+#define RCTBUBYPSEN_ADDRESS     0x18B47800  /* Realtime Core TBU bypass enable register address */
 #define MASK 0x00000FFF
+#endif
+
+#ifndef UCIE_CH
+#define UCIE_CH     UCIE_CH0
+#endif
+
+#define UCIE_D2D_MEM    (0x20000000000ULL + UCIE_CH*0x4000000000ULL)
 
 // For RC write EP read test data
 st_ucie_hdma_cfg_t hdma_tbl_wrtest_dt[] = {	// UCIE1 WRCHx1
 	/*	ucie_ch	    hdma_ch	    mSrcAddr			mDestAddr			size				rw */
-	{	UCIE_CH1,   HDMA_CH0,	DBSC01_HDMA_PA(0), 	DBSC01_HDMA_PA(1),  DMA_SIZE_PER_CHAN,	0,  },
+	{	UCIE_CH,   HDMA_CH0,	DBSC01_HDMA_PA(0), 	DBSC01_HDMA_PA(1),  DMA_SIZE_PER_CHAN,	0,  },
 	{	0,		    0,		    0x0,				0x0,				0x0,		        0,  },	// End Of Table
 };
 
@@ -160,6 +179,8 @@ static void prvSetupHardware( void )
     Irq_Setup();
 
     (void)pfcInitModules(getModuleConfigs());
+
+    R_UCIE_Config(UCIE_CH, UCIE_MODE_RC, LINKSPEED_4GTPS, true);
 }
 
 /*-----------------------------------------------------------*/
@@ -176,14 +197,11 @@ static void ucie_comm_task(void *pvParameters)
     uint8_t index;
     *(st_ucie_trigger_sig_t*)UCIE_LOOPCHECK_ADDR = (st_ucie_trigger_sig_t){0};
 
-    /* UCIe_chan = 1 - Root-Complex */
-    printf("<----- [RC] TC1: UCIE LINKUP ----->\n");
-    ret = R_UCIE_Setup(UCIE_CH1, UCIE_MODE_RC, LINKSPEED_16GTPS);
-    if (ret == LINKUP_TIMEOUT) {
-        printf("The first time linkup timeout. Retry 30 times\n");
-        ret = R_UCIE_Retry_Linkup(UCIE_CH1, UCIE_MODE_RC, LINKSPEED_16GTPS, 30);
+    while (R_UCIE_Get_Linkup_Status(UCIE_CH) != LINKUP_SUCCESS){
+        __asm__ volatile("nop");
     }
-    
+
+    printf("<----- [RC] TC1: UCIE LINKUP ----->\n");
     if (ret) {
         printf("Result: FAILED\n");
     }
@@ -262,16 +280,24 @@ static void ucie_comm_task(void *pvParameters)
         printf("Result: FAILED\n");
     }
 
+    vTaskDelay(500);
     printf("<----- [RC] TC 4: PIO TRANSFER ----->\n");
-    uint64_t ucie1_pa = 0x24000000000;
+    uint64_t ucie1_pa = UCIE_D2D_MEM;
     uint32_t ucie1_va = 0x8E600000;
 
     bool is_secure = true;
 
+#if (BOARD == MDP_AIACC_HIL || BOARD == MDP_AIACC_RFS2)
+    uint32_t streamId[] = {
+        0x00800,
+        0x00900,
+    };
+#else
     uint32_t streamId[] = {
         0x000,
         0xC00,
     };
+#endif
 
     st_smmu_streamid_instance_ctrl_t smmu_ctrl = {
         .smmu_domain = SMMU_RT,
@@ -290,15 +316,12 @@ static void ucie_comm_task(void *pvParameters)
         R_SMMU_Map(&smmu_ctrl, ucie1_va, ucie1_pa, 0x10000, ATTR_DEVICE_NGNRNE_EL1_RW_EL0_RW);
     }
 
-    volatile uint32_t *RCTBUBYPSEN = (volatile uint32_t *)0x18B47800;
-    uint32_t smmu_bypass = 0xFFE;
+    volatile uint32_t *RCTBUBYPSEN = (volatile uint32_t *)RCTBUBYPSEN_ADDRESS;
+    uint32_t smmu_bypass = ~(1U << 0U) & MASK;
     uint32_t old = *RCTBUBYPSEN;
     uint32_t new = (old & ~MASK) | (smmu_bypass & MASK);
     *RCTBUBYPSEN = new;
     R_SMMU_Enable(SMMU_RT, is_secure);
-
-    /* RC Write EP Read */
-    *((volatile uint32_t*)ucie1_va) = PIO_RC_WRITE_DATA;
 
     /* EP Write RC Read */
     ret = 1;
@@ -318,7 +341,11 @@ static void ucie_comm_task(void *pvParameters)
         printf("Result: PASSED\n");
     }
 
-    printf("<----- [RC] <APP_END> ----->\n");
+    /* RC Write EP Read */
+    *((volatile uint32_t*)ucie1_va) = PIO_RC_WRITE_DATA;
+
+    printf("<APP_END>\n");
+
     for(;;) {
         __asm__ volatile("nop");
     }
