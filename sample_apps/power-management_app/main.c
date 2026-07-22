@@ -17,6 +17,7 @@
 #include "state-manager/r_clock_domain_id.h"
 #include "state-manager/r_reset_domain_id.h"
 #include "pfc/r_pfc_api.h"
+#include "board.h"
 
 #define pmApp_TASK_PRIORITY ( tskIDLE_PRIORITY + 1 )
 #define PM_LOG(format, ...) \
@@ -39,8 +40,7 @@ void main()
 {
 
     prvSetupHardware();
-
-	xTaskCreate(prvPmAppTask, "powerManagementApp", configMINIMAL_STACK_SIZE,
+	xTaskCreate(prvPmAppTask, "powerManagementApp", configMINIMAL_STACK_SIZE * 20,
 				NULL, pmApp_TASK_PRIORITY, NULL);
 
     /* Start the tasks and timer running. */
@@ -56,7 +56,7 @@ static void prvPmAppTask(void *pvParameters )
 {
     /* Remove compiler warning about unused parameter. */
     (void) pvParameters;
-
+    vTaskDelay(3000);
 	PM_LOG("PowerManagement FreeRTOS starting...\n");
 	pmAppExample();
 
@@ -201,6 +201,7 @@ static int pmClockTest(int clock_id, uint32_t *rate_set)
 	/* Set clock off  */
     PM_LOG("**********TC%d %d-5: set clock id %d OFF.**********\r\n",
             tc_number, clock_id, clock_id);
+#if (BOARD == X5H_IRONHIDE)
     if ((X5H_CLOCK_ID_MDLC_VIPN_MSYNC == clock_id) ||
         (X5H_CLOCK_ID_MDLC_VIPS_MSYNC == clock_id) ||
         (X5H_CLOCK_ID_MDLC_CR52CORE0 == clock_id) ||
@@ -209,6 +210,7 @@ static int pmClockTest(int clock_id, uint32_t *rate_set)
         (X5H_CLOCK_ID_MDLC_CR52SHADOW0_PO == clock_id)) {
         PM_LOG("Currently not supported this operation.\r\n");
     } else {
+#endif
         ret = R_StateManager_ClockOff(clock_id);
         if (ret)
         {
@@ -219,7 +221,9 @@ static int pmClockTest(int clock_id, uint32_t *rate_set)
         {
             PM_LOG("Set clock id %d OFF OK!\r\n", clock_id);
         }
+#if (BOARD == X5H_IRONHIDE)
     }
+#endif
 
     /* Get clock - Expected OFF */
     PM_LOG("*****TC%d %d-6: get clock id %d (expected OFF)****\r\n",
@@ -422,15 +426,24 @@ static void pmAppExample(void)
 
     PM_LOG("*******TC%d: Powerdomain control starting!*******\r\n",
             ++tc_number);
-	for (domain_id = X5H_POWER_DOMAIN_ID_VIPN;
-		 domain_id < X5H_POWER_DOMAIN_ID_P_RPU_CORE00;
-		 ++domain_id)
+#if (BOARD == X5H_IRONHIDE) || (BOARD == MDP_X5H_HIL)
+	for (domain_id = X5H_POWER_DOMAIN_ID_P_RPU_CORE00 - 1;
+		 domain_id >= 0;
+		 domain_id--)
+
+#else 
+	for (domain_id = AIACC_POWER_DOMAIN_ID_COUNT - 1;
+		 domain_id >= 0;
+		 domain_id--)
+#endif
 	{
+#if (BOARD == X5H_IRONHIDE) || (BOARD == MDP_X5H_HIL)
 		if ((X5H_POWER_DOMAIN_ID_RC00 == domain_id) ||
             (X5H_POWER_DOMAIN_ID_CMN == domain_id)) {
 			PM_LOG("Skip domain %d\n", domain_id);
 			continue;
 		}
+#endif
 		pmPowerdomainTest(domain_id);
 	}
     PM_LOG("*******TC%d: Powerdomain control end!*******\r\n\r\n",
@@ -450,25 +463,36 @@ static void pmAppExample(void)
 	}
 #endif
 
-#define SYSTEM_RST_TEST 1
+//  #define SYSTEM_RST_TEST 1
     PM_LOG("*******TC%d: SCMI Clock control starting!*******\r\n",
             ++tc_number);
 #ifndef SYSTEM_RST_TEST
+#if (BOARD == X5H_IRONHIDE) || (BOARD == MDP_X5H_HIL)
 	for (domain_id = X5H_CLOCK_ID_MDLC_VIPN_FCPCS0;
 		 domain_id < X5H_CLOCK_ID_COUNT;
 		 ++domain_id)
+#elif (BOARD == MDP_AIACC_HIL)
+	for (domain_id = AIACC_CLOCK_ID_IMR00;
+		 domain_id < AIACC_CLOCK_ID_COUNT;
+		 ++domain_id)
 #else
-        domain_id = X5H_CLOCK_ID_MDLC_VIPN_FCPCS0;
+    /* Do nothing */
+#endif
+#else
+        domain_id = 0;
 #endif /* SYSTEM_RST_TEST */
 	{
+#if (BOARD == X5H_IRONHIDE) || (BOARD == MDP_X5H_HIL)
 		if ((X5H_CLOCK_ID_MDLC_HSCIF0 == domain_id) ||
             (X5H_CLOCK_ID_MDLC_SCIF0 == domain_id) ||
             (X5H_CLOCK_ID_MDLC_INTAP1 <= domain_id)
-            ) {
+            )
+        {
 #ifndef SYSTEM_RST_TEST
 			continue;
 #endif /* SYSTEM_RST_TEST */
 		}
+#endif
 		pmClockTest(domain_id, rates);
 	}
 #ifndef SYSTEM_RST_TEST
@@ -482,14 +506,17 @@ static void pmAppExample(void)
 
     PM_LOG("*******TC%d: SCMI Reset control starting!*******\r\n",
             ++tc_number);
+#if (BOARD == X5H_IRONHIDE) || (BOARD == MDP_X5H_HIL)
 #ifndef SYSTEM_RST_TEST
 	for (domain_id = X5H_RESET_DOMAIN_ID_VIPN_FCPCS0;
 		 domain_id < X5H_RESET_DOMAIN_ID_COUNT;
 		 ++domain_id)
 #else
-        domain_id = X5H_RESET_DOMAIN_ID_VIPN_FCPCS0;
+        domain_id = 0;
 #endif /* SYSTEM_RST_TEST */
+#endif /* (BOARD == X5H_IRONHIDE) || (BOARD == MDP_X5H_HIL) */
 	{
+#if (BOARD == X5H_IRONHIDE) || (BOARD == MDP_X5H_HIL)
 		if ((X5H_RESET_DOMAIN_ID_HSCIF0 == domain_id) ||
             (X5H_RESET_DOMAIN_ID_SCIF0 == domain_id) ||
             (X5H_RESET_DOMAIN_ID_INTAP1 <= domain_id)
@@ -498,6 +525,7 @@ static void pmAppExample(void)
 			continue;
 #endif
 		}
+#endif
 		pmResetTest(domain_id);
 	}
 #ifndef SYSTEM_RST_TEST
@@ -538,21 +566,3 @@ static void pmAppExample(void)
             tc_number);
 #endif
 }
-
-/*-----------------------------------------------------------*/
-
-int printf_raw(const char *format, ...);
-
-void vMainAssertCalled( const char *pcFileName, uint32_t ulLineNumber )
-{
-    /* Don't use printf as it uses FreeRTOS resources */
-    printf_raw("ASSERT!  Line %d of file %s\n", ulLineNumber, pcFileName);
-    taskENTER_CRITICAL();
-    for( ;; );
-}
-
-void vDeleteCallingTask( void )
-{
-     vTaskDelete( NULL );
-}
-
