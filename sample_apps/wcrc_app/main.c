@@ -274,13 +274,17 @@ static void prvCRCTask( void *pvParameters )
     uint32_t crc_buf, kcrc_buf, crc_size;
     wcrc_instance_ctrl_t * p_instance_ctrl;
 
+#if (BOARD == MDP_X5H_HIL)
+    vTaskDelay(6000);
+#endif
+
     /* Remove compiler warning about unused parameter. */
     ( void ) pvParameters;
 
     ret = R_RTDMAC_RcarDmacCtrlInit(RT_DMAC0,
                                     DRV_RTDMAC_PRIO_FIX);
-    //ret = R_RTDMAC_RcarDmacCtrlInit(RT_DMAC1,
-    //                                DRV_RTDMAC_PRIO_FIX);
+    ret = R_RTDMAC_RcarDmacCtrlInit(RT_DMAC1,
+                                    DRV_RTDMAC_PRIO_FIX);
     ret = R_RTDMAC_RcarDmacCtrlInit(RT_DMAC2,
                                     DRV_RTDMAC_PRIO_FIX);
     ret = R_RTDMAC_RcarDmacCtrlInit(RT_DMAC3,
@@ -306,8 +310,8 @@ static void prvCRCTask( void *pvParameters )
     ret = R_CRC_Calculate(&g_wcrc_inst_ctrl_indepe);
     printf("\nR_CRC_Calculate: ret = %d\n\n", ret);
 
-    /* Wait WCRC operation in 3ms */
-    ret = R_CRC_Wait_Operation(&g_wcrc_inst_ctrl_indepe, 3);
+    /* Wait WCRC operation in 100ms */
+    ret = R_CRC_Wait_Operation(&g_wcrc_inst_ctrl_indepe, 100);
     printf("\nR_CRC_Wait_Operation: ret = %d\n\n", ret);
 
     ret = R_CRC_Get_Input_Data(&g_wcrc_inst_ctrl_indepe);
@@ -358,8 +362,8 @@ static void prvCRCTask( void *pvParameters )
     ret = R_CRC_Calculate(&g_wcrc_inst_ctrl_e2e);
     printf("\nR_CRC_Calculate: ret = %d\n\n", ret);
 
-    /* Wait WCRC operation in 3ms */
-    ret = R_CRC_Wait_Operation(&g_wcrc_inst_ctrl_e2e, 3);
+    /* Wait WCRC operation in 100ms */
+    ret = R_CRC_Wait_Operation(&g_wcrc_inst_ctrl_e2e, 100);
     printf("\nR_CRC_Wait_Operation: ret = %d\n\n", ret);
 
     ret = R_CRC_Get_Input_Data(&g_wcrc_inst_ctrl_e2e);
@@ -406,8 +410,8 @@ static void prvCRCTask( void *pvParameters )
     ret = R_CRC_Calculate(&g_wcrc_inst_ctrl_e2e_3);
     printf("\nR_CRC_Calculate: ret = %d\n\n", ret);
 
-    /* Wait WCRC operation in 3ms */
-    ret = R_CRC_Wait_Operation(&g_wcrc_inst_ctrl_e2e_3, 3);
+    /* Wait WCRC operation in 100ms */
+    ret = R_CRC_Wait_Operation(&g_wcrc_inst_ctrl_e2e_3, 100);
     printf("\nR_CRC_Wait_Operation: ret = %d\n\n", ret);
 
     ret = R_CRC_Get_Input_Data(&g_wcrc_inst_ctrl_e2e_3);
