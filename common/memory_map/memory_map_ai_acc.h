@@ -40,6 +40,9 @@ typedef struct st_memory_region {
 #define SHARE_CR_CA_ADDRESS         0x8E600000
 #define SHARE_CR_CA_SIZE            0x10000000  // to 0x9E60_0000
 
+#define UCIE_SHARE_ADDRESS          0x9E600000
+#define UCIE_SHARE_SIZE             0x04000000  // to 0xA2600000
+
 #define LINUX_CMA_ADDRESS_0         0xa2600000
 #define LINUX_CMA_SIZE_0            0x1DA00000  // to 0xC000_0000
 
@@ -52,7 +55,8 @@ static const st_memory_region_t RCAR_MEMMORY_ARR[] = {
     {.type = SHARE_MEM,     .mem_addr = {.base_address = (uint32_t) LINUX_CMA_ADDRESS_0, .size = (uint32_t) LINUX_CMA_SIZE_0},    .attr = RAM_NOCACHE_ATTR},
     {.type = SHARE_MEM,     .mem_addr = {.base_address = (uint32_t) SHARE_CR_CA_ADDRESS, .size = (uint32_t) SHARE_CR_CA_SIZE},    .attr = RAM_NOCACHE_ATTR},
     {.type = PERIPHERAL,    .mem_addr = {.base_address = (uint32_t) PERIPHERAL_START_0,  .size = (uint32_t) PERIPHERAL_SIZE_0},   .attr = DEVICE_ATTR},
-    {.type = PERIPHERAL,    .mem_addr = {.base_address = (uint32_t) PERIPHERAL_START_1,  .size = (uint32_t) PERIPHERAL_SIZE_1},   .attr = DEVICE_ATTR}
+    {.type = PERIPHERAL,    .mem_addr = {.base_address = (uint32_t) PERIPHERAL_START_1,  .size = (uint32_t) PERIPHERAL_SIZE_1},   .attr = DEVICE_ATTR},
+    {.type = SHARE_MEM,     .mem_addr = {.base_address = (uint32_t) UCIE_SHARE_ADDRESS,  .size = (uint32_t) UCIE_SHARE_SIZE},     .attr = DEVICE_ATTR}
 };
 
 #endif // MEMORY_MAP_AI_ACC_H

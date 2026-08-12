@@ -187,7 +187,7 @@ int main(void)
     /* Configure the hardware ready to run the demo. */
     prvSetupHardware();
 
-    xTaskCreate( echoTask, "echoTask", configMINIMAL_STACK_SIZE, NULL, ( tskIDLE_PRIORITY + 1 ), NULL );
+    xTaskCreate( echoTask, "echoTask", configMINIMAL_STACK_SIZE*10, NULL, ( tskIDLE_PRIORITY + 1 ), NULL );
     /* Start the tasks and timer running. */
     vTaskStartScheduler();
     for( ;; )
