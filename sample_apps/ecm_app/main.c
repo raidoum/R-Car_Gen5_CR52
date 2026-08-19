@@ -45,6 +45,16 @@
 #include "../drivers/ecm/r_ecm_reg.h"
 #include "watchdog/r_wwdt_api.h"
 
+#include "board.h"
+
+#if (BOARD == X5H_VDK) || (BOARD == X5H_IRONHIDE) || (BOARD == X5H_RFS2) || (BOARD == MDP_X5H_HIL)
+#define WWDT_UNIT   R_WWDT20
+#define WWDT_ECM_NMI_OUTPUT   WWDT20_DETECTS_ERROR_NMI_IS_OUTPUT
+#elif (BOARD == MDP_AIACC_RFS2) || (BOARD == MDP_AIACC_HIL)
+#define WWDT_UNIT   R_WWDT2
+#define WWDT_ECM_NMI_OUTPUT   WWDT2_DETECTS_ERROR_NMI_IS_OUTPUT
+#endif
+
 #define main_ECM_TASK_PRIORITY        ( tskIDLE_PRIORITY + 1 )
 
 #define BUSECMSAFINTENCMN00                 (uint32_t)(0xCA4506C0U)
@@ -133,7 +143,7 @@ static void prvEcmTask( void *pvParameters )
     }
 
     printf("TC3: R_ECM_SetDetection\n");
-    R_ECM_SetDetection(WWDT20_DETECTS_ERROR_NMI_IS_OUTPUT, 1);
+    R_ECM_SetDetection(WWDT_ECM_NMI_OUTPUT, 1);
     if (ret)
     {
         printf("Result: Failed\n");
@@ -144,7 +154,7 @@ static void prvEcmTask( void *pvParameters )
     }
 
     printf("TC4: R_ECM_SetInterruptNotification\n");
-    R_ECM_SetInterruptNotification(WWDT20_DETECTS_ERROR_NMI_IS_OUTPUT, 1);
+    R_ECM_SetInterruptNotification(WWDT_ECM_NMI_OUTPUT, 1);
     if (ret)
     {
         printf("Result: Failed\n");
@@ -156,8 +166,8 @@ static void prvEcmTask( void *pvParameters )
 
     printf("TC5: Irq Error Handler\n");
 	/* Device driver part */
-	R_WWDT_Init(R_WWDT20, WINDOW_100P, 68, false, ERM_NMI_MODE);
-	err = R_WWDT_Refresh(R_WWDT20);
+	R_WWDT_Init(WWDT_UNIT, WINDOW_100P, 68, false, ERM_NMI_MODE);
+	err = R_WWDT_Refresh(WWDT_UNIT);
 
     if(xSemaphoreTake(xSemaphore, 2000) == pdTRUE)
     {
