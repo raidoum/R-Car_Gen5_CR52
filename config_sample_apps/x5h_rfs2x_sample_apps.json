@@ -239,6 +239,7 @@
             "bin": [
                 "rcar_rpmsg_core0.elf",
                 "rcar_rpmsg_core1.elf",
+                "rcar_rpmsg_ar_core0.elf",
                 "rcar_rpmsg_echo_core1.elf",
                 "rcar_rpmsg_api_test_core0.elf",
                 "rcar_rpmsg_api_test_core1.elf",

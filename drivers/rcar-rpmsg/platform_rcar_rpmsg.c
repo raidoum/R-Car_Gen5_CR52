@@ -52,6 +52,36 @@ static struct remoteproc      s_rproc[PLATFORM_LINK_MAX][2];
 static struct remoteproc_priv s_priv[PLATFORM_LINK_MAX][2];
 static uint8_t                s_rproc_inited[PLATFORM_LINK_MAX][2];
 
+bool platform_get_rpmsg_route(rpmsg_driver_id_t driver_id, platform_rpmsg_route_t *route)
+{
+    switch (driver_id) {
+        case RPMSG_DRIVER_ID_0:
+            /* Matches rpmsg-echo.c on ch0. */
+            *route = (platform_rpmsg_route_t){ 0U, 0U, false, "rcar-smmu" };
+            return true;
+        case RPMSG_DRIVER_ID_1:
+            *route = (platform_rpmsg_route_t){ 1U, 1U, false, "rcar-gpio" };
+            return true;
+        case RPMSG_DRIVER_ID_2:
+            *route = (platform_rpmsg_route_t){ 2U, PLATFORM_NO_NOTIFY, false, "rcar-i2c" };
+            return true;
+        case RPMSG_DRIVER_ID_3:
+            *route = (platform_rpmsg_route_t){ 3U, PLATFORM_NO_NOTIFY, true, "rcar-camera" };
+            return true;
+        case RPMSG_DRIVER_ID_6:
+            /* Other chip: vdev 0 of the UCIe rsc table, no MFIS across chips. */
+            *route = (platform_rpmsg_route_t){ 0U, PLATFORM_NO_NOTIFY, false, "rcar-smmu-ucie0",
+                                              PLATFORM_LINK_UCIE0 };
+            return true;
+        case RPMSG_DRIVER_ID_7:
+            /* General-purpose A/R IPC on Linux UIO channel 0. */
+            *route = (platform_rpmsg_route_t){ 0U, 0U, false, "ar-ipc" };
+            return true;
+        default:
+            return false;
+    }
+}
+
 static unsigned int side_index(virtio_type_t type)
 {
     return (type == VIRTIO_BACK_END) ? 1U : 0U;
@@ -133,7 +163,7 @@ static int platform_create_proc(struct remoteproc *rproc, struct remoteproc_priv
     return ret;
 }
 
-int rcar_platform_init(platform_link_t link, virtio_type_t type, struct remoteproc **platform)
+int rpmsg_platform_init(platform_link_t link, virtio_type_t type, struct remoteproc **platform)
 {
     if ((platform == NULL) || ((unsigned int)link >= (unsigned int)PLATFORM_LINK_MAX))
     {
@@ -202,7 +232,7 @@ int platform_add_vdev(struct remoteproc *platform, unsigned int ch,
                       struct rpmsg_device **rdev)
 {
     if ((platform == NULL) || (rdev == NULL) || (ch >= PLATFORM_VDEV_MAX) ||
-        ((mfis_ch != PLATFORM_NO_MFIS) && (mfis_ch > 63U)))
+        ((mfis_ch != PLATFORM_NO_NOTIFY) && (mfis_ch > 63U)))
     {
         return -EINVAL;
     }
@@ -233,7 +263,7 @@ int platform_add_vdev(struct remoteproc *platform, unsigned int ch,
     slot->rsc_cached = 1U;
 
     /* MFIS before the vdev: creating it already notifies the peer. */
-    slot->has_mfis = (mfis_ch != PLATFORM_NO_MFIS) ? 1U : 0U;
+    slot->has_mfis = (mfis_ch != PLATFORM_NO_NOTIFY) ? 1U : 0U;
     if ((slot->has_mfis != 0U) && (slot->mfis_inited == 0U))
     {
         slot->mfis.ch           = (uint8_t)mfis_ch;

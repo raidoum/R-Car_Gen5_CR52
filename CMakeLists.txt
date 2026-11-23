@@ -319,8 +319,8 @@ if(ENABLE_OPENAMP)
         ${BSP_DIR}/drivers/rcar-rpmsg/platform_rcar_rpmsg.c
         ${BSP_DIR}/drivers/rcar-rpmsg/remoteproc_rcar_rpmsg.c
         ${BSP_DIR}/drivers/rcar-rpmsg/rcar_dispatch.c
-        ${BSP_DIR}/drivers/rcar-rpmsg/rcar_rpmsg.c
-        ${BSP_DIR}/drivers/rcar-rpmsg/rcar_rpmsg_os_freertos.c
+        ${BSP_DIR}/drivers/rcar-rpmsg/rpmsg_driver.c
+        ${BSP_DIR}/drivers/rcar-rpmsg/rpmsg_driver_os_freertos.c
         ${BSP_DIR}/drivers/rcar-rpmsg/rsc_table_rpmsg.c
         ${BSP_DIR}/drivers/rcar-rpmsg/transport_ucie.c
     )
@@ -388,7 +388,6 @@ if(ENABLE_OPENAMP)
         $<BUILD_INTERFACE:${BSP_DIR}/drivers/virtio>
         $<BUILD_INTERFACE:${BSP_DIR}/drivers/virtio-iommu-backend>
         $<BUILD_INTERFACE:${BSP_DIR}/drivers/rcar-rpmsg>
-        $<BUILD_INTERFACE:${BSP_DIR}/include/rcar-rpmsg>
     )
 endif()
 

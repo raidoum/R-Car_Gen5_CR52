@@ -7,7 +7,7 @@
 #include "FreeRTOS.h"
 #include "semphr.h"
 
-#include "rcar_rpmsg_os.h"
+#include "rpmsg_driver_os.h"
 
 /* Event = binary semaphore (latches a give with no waiter). */
 
@@ -25,7 +25,7 @@ static bool freertos_event_wait(void *ev, uint32_t timeout_ms)
     return xSemaphoreTake((SemaphoreHandle_t)ev, ticks) == pdTRUE;
 }
 
-/* MFIS ISR only. */
+/* The notification interrupt priority must allow FreeRTOS FromISR calls. */
 static void freertos_event_signal(void *ev)
 {
     BaseType_t woken = pdFALSE;
@@ -33,7 +33,7 @@ static void freertos_event_signal(void *ev)
     portYIELD_FROM_ISR(woken);
 }
 
-const rcar_rpmsg_os_hooks_t rcar_rpmsg_os_hooks_freertos = {
+const rpmsg_driver_os_hooks_t rpmsg_driver_os_hooks = {
     .event_create = freertos_event_create,
     .event_wait   = freertos_event_wait,
     .event_signal = freertos_event_signal,

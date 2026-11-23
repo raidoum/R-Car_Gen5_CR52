@@ -14,9 +14,20 @@
 #include "semphr.h"
 
 #include "rcar_msg.h"
+#include "rpmsg_driver.h"
 
 /* Max number of framework drivers registered on one dispatch table. */
 #define RCAR_MAX_DRIVERS  8U
+
+typedef enum {
+    RCAR_OK = RPMSG_DRIVER_OK,
+    RCAR_ERR_INVALID_PARAM = RPMSG_DRIVER_ERR_INVALID_PARAM,
+    RCAR_ERR_ALREADY_REGISTERED = 3,
+    RCAR_ERR_NOT_REGISTERED,
+    RCAR_ERR_NO_HANDLER,
+    RCAR_ERR_BUFFER_FULL = RPMSG_DRIVER_ERR_BUFFER_FULL,
+    RCAR_ERR_INTERNAL = RPMSG_DRIVER_ERR_INTERNAL,
+} e_rcar_status_t;
 
 /* Handler registered by a framework driver for one driver_id.
  * resp_payload/resp_payload_len let the handler attach a response payload

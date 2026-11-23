@@ -4,15 +4,14 @@
  * SPDX-License-Identifier: MIT
  */
 
-#ifndef RCAR_RPMSG_OS_H
-#define RCAR_RPMSG_OS_H
+#ifndef RPMSG_DRIVER_OS_H
+#define RPMSG_DRIVER_OS_H
 
 #include <stdint.h>
 #include <stdbool.h>
 
 /*
- * OS hooks (internal). With hooks, MFIS driver_ids wake receive() on the
- * interrupt; UCIe driver_ids poll every 1 ms.
+ * OS hooks for routes that wake receive() from a notification interrupt.
  *
  *   event_create : new binary event, NULL on failure.
  *   event_wait   : wait for a signal or timeout_ms; consumes the signal.
@@ -22,12 +21,11 @@ typedef struct {
     void *(*event_create)(void);
     bool  (*event_wait)(void *ev, uint32_t timeout_ms);
     void  (*event_signal)(void *ev);
-} rcar_rpmsg_os_hooks_t;
+} rpmsg_driver_os_hooks_t;
 
 /*
- * FreeRTOS hooks, used by rcar_rpmsg.c.
- * The MFIS interrupt priority must allow FreeRTOS FromISR calls.
+ * Provided by the selected OS port.
  */
-extern const rcar_rpmsg_os_hooks_t rcar_rpmsg_os_hooks_freertos;
+extern const rpmsg_driver_os_hooks_t rpmsg_driver_os_hooks;
 
-#endif /* RCAR_RPMSG_OS_H */
+#endif /* RPMSG_DRIVER_OS_H */

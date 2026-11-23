@@ -10,13 +10,12 @@
 #include <stdint.h>
 #include <stddef.h>
 
-#include "rcar-rpmsg/rcar_rpmsg.h"
-
-/* Wire frame (internal): header + payload. Reserved fields are sent as 0. */
+/* R-Car wire frame carried in the RPMsg payload and shared with the Linux peer.
+ * Reserved fields are sent as 0. */
 #define RCAR_MSG_PAYLOAD_MAX_SIZE  120U
 
 typedef struct {
-    uint8_t  driver_id;    /* e_rcar_driver_id_t */
+    uint8_t  driver_id;    /* Route ID */
     uint8_t  msg_type;     /* reserved */
     uint16_t payload_len;
     uint32_t seq_id;       /* reserved */

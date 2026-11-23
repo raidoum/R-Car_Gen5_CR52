@@ -12,7 +12,7 @@
 #include <stdio.h>
 #include <string.h>
 
-#include "rcar-rpmsg/rcar_rpmsg.h"
+#include "rpmsg_driver.h"
 
 #include "board.h"
 
@@ -26,7 +26,7 @@
 #include "logging_stack.h"
 
 #define RPMSG_SERVICE_NAME     "rpmsg-client-sample" /* must match echo.c */
-#define FE_DRIVER_ID            RCAR_RPMSG_ID_0  /* vdev 0, as echo.c */
+#define FE_DRIVER_ID            RPMSG_DRIVER_ID_0  /* vdev 0, as echo.c */
 
 #define FE_STARTUP_DELAY_MS      1000U    /* let echo.c write the rsc table first */
 
@@ -65,14 +65,14 @@ static void echo_client_task(void *pvParameters)
 
     vTaskDelay(pdMS_TO_TICKS(FE_STARTUP_DELAY_MS));
 
-    static rcar_rpmsg_channel_t ch;
-    rcar_rpmsg_open_cfg_t cfg = {
+    static rpmsg_driver_channel_t ch;
+    rpmsg_driver_open_cfg_t cfg = {
         .driver_id = FE_DRIVER_ID,
-        .side      = RCAR_RPMSG_SIDE_FE,
+        .side      = RPMSG_DRIVER_SIDE_FE,
         .name      = RPMSG_SERVICE_NAME,
     };
-    if (rcar_rpmsg_open(&ch, cfg) != RCAR_OK) {
-        LogDebug(("[FE] rcar_rpmsg_open FAILED\n"));
+    if (rpmsg_driver_open(&ch, cfg) != RPMSG_DRIVER_OK) {
+        LogDebug(("[FE] rpmsg_driver_open FAILED\n"));
         vTaskDelete(NULL);
         return;
     }
@@ -80,22 +80,22 @@ static void echo_client_task(void *pvParameters)
 
     const char *msg = "hello";
     for (;;) {
-        e_rcar_status_t rc = rcar_rpmsg_send(&ch, msg, (uint16_t)strlen(msg));
-        if (rc == RCAR_OK) {
+        rpmsg_driver_status_t rc = rpmsg_driver_send(&ch, msg, (uint16_t)strlen(msg));
+        if (rc == RPMSG_DRIVER_OK) {
             LogDebug(("[FE] sent: %s\n", msg));
-        } else if (rc == RCAR_ERR_NOT_CONNECTED) {
+        } else if (rc == RPMSG_DRIVER_ERR_NOT_CONNECTED) {
             LogDebug(("[FE] echo not bound yet, retry\n"));
         } else {
             LogDebug(("[FE] send FAILED (%d)\n", (int)rc));
         }
 
-        char payload[RCAR_RPMSG_MAX_PAYLOAD + 1];
+        char payload[RPMSG_DRIVER_MAX_PAYLOAD + 1];
         uint16_t n = 0U;
-        rc = rcar_rpmsg_receive(&ch, payload, RCAR_RPMSG_MAX_PAYLOAD, &n, RECEIVE_TIMEOUT_MS);
-        if ((rc == RCAR_OK) || (rc == RCAR_ERR_PAYLOAD_TOO_LARGE)) {
+        rc = rpmsg_driver_receive(&ch, payload, RPMSG_DRIVER_MAX_PAYLOAD, &n, RECEIVE_TIMEOUT_MS);
+        if ((rc == RPMSG_DRIVER_OK) || (rc == RPMSG_DRIVER_ERR_PAYLOAD_TOO_LARGE)) {
             payload[n] = '\0';
             LogDebug(("[FE] received: %s\n", payload));
-        } else if (rc == RCAR_ERR_TIMEOUT) {
+        } else if (rc == RPMSG_DRIVER_ERR_TIMEOUT) {
             LogDebug(("[FE] no reply within %ums\n", RECEIVE_TIMEOUT_MS));
         } else {
             LogDebug(("[FE] receive FAILED (%d)\n", (int)rc));

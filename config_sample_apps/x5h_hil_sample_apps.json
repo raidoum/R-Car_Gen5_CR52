@@ -243,7 +243,8 @@
             "name": "rcar_rpmsg",
             "bin": [
                 "rcar_rpmsg_core0.srec",
-                "rcar_rpmsg_core1.srec"
+                "rcar_rpmsg_core1.srec",
+                "rcar_rpmsg_ar_core0.srec"
             ],
             "dependency": "rcar_rpmsg",
             "status": "Test"

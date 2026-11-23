@@ -12,7 +12,7 @@
 #include <stdio.h>
 #include <string.h>
 
-#include "rcar-rpmsg/rcar_rpmsg.h"
+#include "rpmsg_driver.h"
 #include "ucie/r_ucie.h"
 
 #include "board.h"
@@ -25,7 +25,7 @@
  *                    in this chip's DRAM
  * Test case TC5: result printed by the X5H; the AIACC prints "Failed" only
  * if its open/receive/echo fails.
- * RCAR_RPMSG_ID_6 goes over UCIe CH0: rcar_rpmsg does the SMMU and the iATU
+ * RPMSG_DRIVER_ID_6 goes over UCIe CH0: the RPMsg platform sets up the SMMU and iATU
  * on the X5H. Link-up: ucie0_setup_task of each chip (X5H: R_UCIE_Config()
  * below; AIACC: default config), or the X5H CA core.
  */
@@ -39,7 +39,7 @@
 #define UCIE_SIDE_FE            0
 #endif
 
-#define ECHO_DRIVER_ID          RCAR_RPMSG_ID_6
+#define ECHO_DRIVER_ID          RPMSG_DRIVER_ID_6
 #define ECHO_COUNT              20U
 #define TC_UCIE                 5
 
@@ -104,45 +104,45 @@ static void echo_fe_task(void *pvParameters)
     LogAlways(("TC%d: Message transmission and reception between the CR core on X5H "
               "and the CR core on AIACC0 across UCIE.\n", TC_UCIE));
     /* Links up and waits for the EP; times out 10 s after link-up: retry. */
-    static rcar_rpmsg_channel_t ch;
-    rcar_rpmsg_open_cfg_t cfg = {
+    static rpmsg_driver_channel_t ch;
+    rpmsg_driver_open_cfg_t cfg = {
         .driver_id = ECHO_DRIVER_ID,
-        .side      = RCAR_RPMSG_SIDE_FE,
+        .side      = RPMSG_DRIVER_SIDE_FE,
     };
-    e_rcar_status_t rc;
-    while ((rc = rcar_rpmsg_open(&ch, cfg)) != RCAR_OK) {
-        LogDebug(("[RC] rcar_rpmsg_open failed (%d), retry\n", (int)rc));
+    rpmsg_driver_status_t rc;
+    while ((rc = rpmsg_driver_open(&ch, cfg)) != RPMSG_DRIVER_OK) {
+        LogDebug(("[RC] rpmsg_driver_open failed (%d), retry\n", (int)rc));
         vTaskDelay(pdMS_TO_TICKS(OPEN_RETRY_MS));
     }
     LogDebug(("[RC] endpoint ready\n"));
 
     uint32_t ok = 0U;
     for (uint32_t i = 0U; i < ECHO_COUNT; ) {
-        char msg[RCAR_RPMSG_MAX_PAYLOAD];
+        char msg[RPMSG_DRIVER_MAX_PAYLOAD];
         int len = snprintf(msg, sizeof(msg), "hello ucie %lu", (unsigned long)i);
 
-        rc = rcar_rpmsg_send(&ch, msg, (uint16_t)len);
-        if (rc == RCAR_ERR_NOT_CONNECTED) {
+        rc = rpmsg_driver_send(&ch, msg, (uint16_t)len);
+        if (rc == RPMSG_DRIVER_ERR_NOT_CONNECTED) {
             LogDebug(("[RC] EP not bound yet, retry\n"));
             vTaskDelay(pdMS_TO_TICKS(SEND_PERIOD_MS));
             continue;
         }
-        if (rc != RCAR_OK) {
+        if (rc != RPMSG_DRIVER_OK) {
             LogDebug(("[RC] send FAILED (%d)\n", (int)rc));
             vTaskDelay(pdMS_TO_TICKS(SEND_PERIOD_MS));
             continue;
         }
         LogDebug(("[RC] sent: %s\n", msg));
 
-        char reply[RCAR_RPMSG_MAX_PAYLOAD + 1];
+        char reply[RPMSG_DRIVER_MAX_PAYLOAD + 1];
         uint16_t n = 0U;
-        rc = rcar_rpmsg_receive(&ch, reply, RCAR_RPMSG_MAX_PAYLOAD, &n, RECEIVE_TIMEOUT_MS);
-        if (rc == RCAR_OK) {
+        rc = rpmsg_driver_receive(&ch, reply, RPMSG_DRIVER_MAX_PAYLOAD, &n, RECEIVE_TIMEOUT_MS);
+        if (rc == RPMSG_DRIVER_OK) {
             reply[n] = '\0';
             bool match = (n == (uint16_t)len) && (memcmp(reply, msg, n) == 0);
             ok += match ? 1U : 0U;
             LogDebug(("[RC] received: %s (%s)\n", reply, match ? "OK" : "MISMATCH"));
-        } else if (rc == RCAR_ERR_TIMEOUT) {
+        } else if (rc == RPMSG_DRIVER_ERR_TIMEOUT) {
             LogDebug(("[RC] no reply within %ums\n", RECEIVE_TIMEOUT_MS));
         } else {
             LogDebug(("[RC] receive FAILED (%d)\n", (int)rc));
@@ -164,14 +164,14 @@ static void echo_be_task(void *pvParameters)
     (void)pvParameters;
 
     /* Blocks until the X5H (FE) is up. */
-    static rcar_rpmsg_channel_t ch;
-    rcar_rpmsg_open_cfg_t cfg = {
+    static rpmsg_driver_channel_t ch;
+    rpmsg_driver_open_cfg_t cfg = {
         .driver_id = ECHO_DRIVER_ID,
-        .side      = RCAR_RPMSG_SIDE_BE,
+        .side      = RPMSG_DRIVER_SIDE_BE,
     };
-    e_rcar_status_t rc = rcar_rpmsg_open(&ch, cfg);
-    if (rc != RCAR_OK) {
-        LogDebug(("[EP] rcar_rpmsg_open FAILED (%d)\n", (int)rc));
+    rpmsg_driver_status_t rc = rpmsg_driver_open(&ch, cfg);
+    if (rc != RPMSG_DRIVER_OK) {
+        LogDebug(("[EP] rpmsg_driver_open FAILED (%d)\n", (int)rc));
         print_result(TC_UCIE, false);
         vTaskDelete(NULL);
         return;
@@ -181,17 +181,17 @@ static void echo_be_task(void *pvParameters)
     uint32_t count = 0U;
     uint32_t errors = 0U;
     for (;;) {
-        char buf[RCAR_RPMSG_MAX_PAYLOAD + 1];
+        char buf[RPMSG_DRIVER_MAX_PAYLOAD + 1];
         uint16_t n = 0U;
-        rc = rcar_rpmsg_receive(&ch, buf, RCAR_RPMSG_MAX_PAYLOAD, &n, RCAR_RPMSG_WAIT_FOREVER);
-        if (rc == RCAR_ERR_PEER_DISCONNECTED) {
+        rc = rpmsg_driver_receive(&ch, buf, RPMSG_DRIVER_MAX_PAYLOAD, &n, RPMSG_DRIVER_WAIT_FOREVER);
+        if (rc == RPMSG_DRIVER_ERR_PEER_DISCONNECTED) {
             LogDebug(("[EP] RC closed the channel\n"));
             if (count < ECHO_COUNT) {
                 print_result(TC_UCIE, false);
             }
             break;
         }
-        if (rc != RCAR_OK) {
+        if (rc != RPMSG_DRIVER_OK) {
             LogDebug(("[EP] receive FAILED (%d)\n", (int)rc));
             errors++;
             continue;
@@ -199,10 +199,10 @@ static void echo_be_task(void *pvParameters)
         buf[n] = '\0';
         LogDebug(("[EP] request: %s\n", buf));
 
-        while ((rc = rcar_rpmsg_send(&ch, buf, n)) == RCAR_ERR_BUFFER_FULL) {
+        while ((rc = rpmsg_driver_send(&ch, buf, n)) == RPMSG_DRIVER_ERR_BUFFER_FULL) {
             vTaskDelay(pdMS_TO_TICKS(SEND_RETRY_MS));
         }
-        if (rc != RCAR_OK) {
+        if (rc != RPMSG_DRIVER_OK) {
             LogDebug(("[EP] echo FAILED (%d)\n", (int)rc));
             errors++;
         }

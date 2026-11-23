@@ -81,6 +81,16 @@ foreach(CORE 0 1)
     add_rcar_rpmsg_app(rcar_rpmsg_api_test_core${CORE} rcar_rpmsg_api_test.c ${TEMP_LDFILE})
 endforeach()
 
+# A/R command sample: Linux UIO FE and X5H CR52 core 0 BE.
+if(BOARD STREQUAL "x5h_rfs2" OR BOARD STREQUAL "x5h_ironhide")
+    add_rcar_rpmsg_app(rcar_rpmsg_ar_core0 ar_ipc.c
+                       ${BSP_DIR}/common/linker/lscript_vram1.ld)
+    target_sources(rcar_rpmsg_ar_core0 PRIVATE
+        ar_ipc_module_load.c
+        cpu_load.c
+    )
+endif()
+
 # UCIe CH0, one source: RC (FE) on the X5H chip, EP (BE) on the AIACC chip.
 # UCIe link only (local channels: rcar_rpmsg_core0/1). Shared memory:
 # 0x9E600000 (UCIE_SHARE) on HIL, 0x96600000 on RFS2.

@@ -15,7 +15,7 @@
 #include "pfc/r_pfc_api.h"
 #include "rcar_utils.h"
 
-#include "rcar-rpmsg/rcar_rpmsg.h"
+#include "rpmsg_driver.h"
 
 #include "board.h"
 
@@ -61,12 +61,12 @@ static void task_fe_camera( void *pvParameters );
 
 static void task_be_smmu( void *pvParameters );
 static void task_be_camera( void *pvParameters );
-static void be_on_unbind(rcar_rpmsg_channel_t *ch, void *ctx);
+static void be_on_unbind(rpmsg_driver_channel_t *ch, void *ctx);
 
 /* Print payload as text. */
 static void print_payload(const char *tag, const uint8_t *buf, uint16_t n)
 {
-    char text[RCAR_RPMSG_MAX_PAYLOAD + 1];
+    char text[RPMSG_DRIVER_MAX_PAYLOAD + 1];
     memcpy(text, buf, n);
     text[n] = '\0';
     LogDebug(("%s%s\r\n", tag, text));
@@ -121,18 +121,18 @@ static void prvSetupHardware( void )
 }
 
 /* CORE0 - FE: send only. Reports only failures of test case @tc. */
-static void fe_send_loop(e_rcar_driver_id_t driver_id, const char *tag, int tc)
+static void fe_send_loop(rpmsg_driver_id_t driver_id, const char *tag, int tc)
 {
     vTaskDelay(FE_STARTUP_DELAY_MS);
 
-    static rcar_rpmsg_channel_t s_fe_ch[2];
-    rcar_rpmsg_channel_t *ch = &s_fe_ch[(driver_id == RCAR_RPMSG_ID_0) ? 0 : 1];
-    rcar_rpmsg_open_cfg_t cfg = {
-        .driver_id = driver_id, .side = RCAR_RPMSG_SIDE_FE,
+    static rpmsg_driver_channel_t s_fe_ch[2];
+    rpmsg_driver_channel_t *ch = &s_fe_ch[(driver_id == RPMSG_DRIVER_ID_0) ? 0 : 1];
+    rpmsg_driver_open_cfg_t cfg = {
+        .driver_id = driver_id, .side = RPMSG_DRIVER_SIDE_FE,
     };
-    if (rcar_rpmsg_open(ch, cfg) != RCAR_OK)
+    if (rpmsg_driver_open(ch, cfg) != RPMSG_DRIVER_OK)
     {
-        LogDebug(("[FE %s] rcar_rpmsg_open FAILED\n", tag));
+        LogDebug(("[FE %s] rpmsg_driver_open FAILED\n", tag));
         print_result(tc, false);
         return;
     }
@@ -144,12 +144,12 @@ static void fe_send_loop(e_rcar_driver_id_t driver_id, const char *tag, int tc)
     while (i < MSG_COUNT)
     {
         snprintf(msg, sizeof(msg), "hello %s %d", tag, i);
-        e_rcar_status_t rc = rcar_rpmsg_send(ch, msg, (uint16_t)strlen(msg));
-        if (rc == RCAR_OK)
+        rpmsg_driver_status_t rc = rpmsg_driver_send(ch, msg, (uint16_t)strlen(msg));
+        if (rc == RPMSG_DRIVER_OK)
         {
             i++;
         }
-        else if (rc != RCAR_ERR_NOT_CONNECTED)   /* not bound yet: retry */
+        else if (rc != RPMSG_DRIVER_ERR_NOT_CONNECTED)   /* not bound yet: retry */
         {
             LogDebug(("[FE %s] send FAILED (%d)\n", tag, (int)rc));
             errors++;
@@ -165,14 +165,14 @@ static void fe_send_loop(e_rcar_driver_id_t driver_id, const char *tag, int tc)
 static void task_fe_smmu(void *pvParameters)
 {
     (void)pvParameters;
-    fe_send_loop(RCAR_RPMSG_ID_0, "smmu", TC_MFIS);
+    fe_send_loop(RPMSG_DRIVER_ID_0, "smmu", TC_MFIS);
     vTaskDelete(NULL);
 }
 
 static void task_fe_camera(void *pvParameters)
 {
     (void)pvParameters;
-    fe_send_loop(RCAR_RPMSG_ID_3, "camera", TC_POLL);
+    fe_send_loop(RPMSG_DRIVER_ID_3, "camera", TC_POLL);
     vTaskDelete(NULL);
 }
 
@@ -184,14 +184,14 @@ static void task_be_smmu(void *pvParameters)
 
     LogAlways(("TC%d: Message transmission and reception between Core 0 and Core 1 on "
               TC_CHIP " using MFIS.\n", TC_MFIS));
-    static rcar_rpmsg_channel_t s_be_smmu;
-    rcar_rpmsg_open_cfg_t cfg = {
-        .driver_id = RCAR_RPMSG_ID_0, .side = RCAR_RPMSG_SIDE_BE,
+    static rpmsg_driver_channel_t s_be_smmu;
+    rpmsg_driver_open_cfg_t cfg = {
+        .driver_id = RPMSG_DRIVER_ID_0, .side = RPMSG_DRIVER_SIDE_BE,
         .on_unbind = be_on_unbind, .ctx = (void *)"smmu",
     };
-    if (rcar_rpmsg_open(&s_be_smmu, cfg) != RCAR_OK)
+    if (rpmsg_driver_open(&s_be_smmu, cfg) != RPMSG_DRIVER_OK)
     {
-        LogDebug(("[BE smmu] rcar_rpmsg_open FAILED\n")); print_result(TC_MFIS, false); vTaskDelete(NULL); return;
+        LogDebug(("[BE smmu] rpmsg_driver_open FAILED\n")); print_result(TC_MFIS, false); vTaskDelete(NULL); return;
     }
     LogDebug(("[BE smmu] endpoint ready\n"));
 
@@ -199,11 +199,11 @@ static void task_be_smmu(void *pvParameters)
     int errors = 0;
     for (;;)
     {
-        uint8_t buf[RCAR_RPMSG_MAX_PAYLOAD];
+        uint8_t buf[RPMSG_DRIVER_MAX_PAYLOAD];
         uint16_t n = 0U;
-        e_rcar_status_t rc = rcar_rpmsg_receive(&s_be_smmu, buf, sizeof(buf), &n,
-                                                RCAR_RPMSG_WAIT_FOREVER);
-        if (rc == RCAR_OK)
+        rpmsg_driver_status_t rc = rpmsg_driver_receive(&s_be_smmu, buf, sizeof(buf), &n,
+                                                RPMSG_DRIVER_WAIT_FOREVER);
+        if (rc == RPMSG_DRIVER_OK)
         {
             print_payload("[BE smmu] request: ", buf, n);
             errors += payload_matches("smmu", count, buf, n) ? 0 : 1;
@@ -213,7 +213,7 @@ static void task_be_smmu(void *pvParameters)
                 print_result(TC_MFIS, errors == 0);
             }
         }
-        else if (rc == RCAR_ERR_PEER_DISCONNECTED)
+        else if (rc == RPMSG_DRIVER_ERR_PEER_DISCONNECTED)
         {
             if (count < MSG_COUNT)
             {
@@ -233,14 +233,14 @@ static void task_be_camera(void *pvParameters)
 
     LogAlways(("TC%d: Message transmission and reception between Core 0 and Core 1 on "
               TC_CHIP " using polling.\n", TC_POLL));
-    static rcar_rpmsg_channel_t s_be_camera;
-    rcar_rpmsg_open_cfg_t cfg = {
-        .driver_id = RCAR_RPMSG_ID_3, .side = RCAR_RPMSG_SIDE_BE,
+    static rpmsg_driver_channel_t s_be_camera;
+    rpmsg_driver_open_cfg_t cfg = {
+        .driver_id = RPMSG_DRIVER_ID_3, .side = RPMSG_DRIVER_SIDE_BE,
         .on_unbind = be_on_unbind, .ctx = (void *)"camera",
     };
-    if (rcar_rpmsg_open(&s_be_camera, cfg) != RCAR_OK)
+    if (rpmsg_driver_open(&s_be_camera, cfg) != RPMSG_DRIVER_OK)
     {
-        LogDebug(("[BE camera] rcar_rpmsg_open FAILED\n")); print_result(TC_POLL, false); vTaskDelete(NULL); return;
+        LogDebug(("[BE camera] rpmsg_driver_open FAILED\n")); print_result(TC_POLL, false); vTaskDelete(NULL); return;
     }
     LogDebug(("[BE camera] endpoint ready\n"));
 
@@ -250,12 +250,12 @@ static void task_be_camera(void *pvParameters)
     {
         vTaskDelay(CAMERA_POLL_PERIOD_MS);
 
-        uint8_t buf[RCAR_RPMSG_MAX_PAYLOAD];
+        uint8_t buf[RPMSG_DRIVER_MAX_PAYLOAD];
         uint16_t n = 0U;
         /* TIMEOUT: nothing yet. */
-        e_rcar_status_t rc = rcar_rpmsg_receive(&s_be_camera, buf, sizeof(buf), &n,
-                                                RCAR_RPMSG_NO_WAIT);
-        if (rc == RCAR_OK)
+        rpmsg_driver_status_t rc = rpmsg_driver_receive(&s_be_camera, buf, sizeof(buf), &n,
+                                                RPMSG_DRIVER_NO_WAIT);
+        if (rc == RPMSG_DRIVER_OK)
         {
             print_payload("[BE camera] request: ", buf, n);
             errors += payload_matches("camera", count, buf, n) ? 0 : 1;
@@ -265,7 +265,7 @@ static void task_be_camera(void *pvParameters)
                 print_result(TC_POLL, errors == 0);
             }
         }
-        else if (rc != RCAR_ERR_TIMEOUT)
+        else if (rc != RPMSG_DRIVER_ERR_TIMEOUT)
         {
             LogDebug(("[BE camera] receive FAILED (%d)\n", (int)rc));
             errors++;
@@ -274,7 +274,7 @@ static void task_be_camera(void *pvParameters)
 }
 
 /* May run in another task: keep short. */
-static void be_on_unbind(rcar_rpmsg_channel_t *ch, void *ctx)
+static void be_on_unbind(rpmsg_driver_channel_t *ch, void *ctx)
 {
     (void)ch;
     LogDebug(("[BE %s] peer unbound\n", (const char *)ctx));

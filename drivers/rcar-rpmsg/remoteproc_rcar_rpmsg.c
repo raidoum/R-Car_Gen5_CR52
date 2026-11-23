@@ -181,7 +181,7 @@ static int x5h_proc_notify(struct remoteproc *rproc, uint32_t id)
     }
     if (slot->mfis_inited == 0U)
     {
-        /* PLATFORM_NO_MFIS: peer polls. */
+        /* No notification channel: the peer polls. */
         return 0;
     }
 
